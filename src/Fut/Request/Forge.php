@@ -346,16 +346,8 @@ class Forge
 			$request->addHeader('X-UT-SID', $this->sid);
 		}
 
-		if ($this->pid !== null) {
-			$request->addHeader('X-POW-SID', $this->pid);
-		}
-
 		if ($this->phishing !== null) {
 			$request->addHeader('X-UT-PHISHING-TOKEN', $this->phishing);
-		}
-
-		if ($this->route !== null) {
-            $request->addHeader('X-UT-Route', $this->route);
 		}
 
 		if ($this->nucId !== null) {
@@ -369,6 +361,45 @@ class Forge
 
 		return $this;
 	}
+
+    /**
+     * adds header for webapp
+     *
+     * @param \Guzzle\Http\Message\Request $request
+     */
+    private function addEndpointHeadersWebApp($request)
+    {
+        $request->addHeader('X-UT-Embed-Error', 'true');
+        $request->addHeader('X-Requested-With', 'XMLHttpRequest');
+        $request->addHeader('Content-Type', 'application/json');
+        $request->addHeader('Accept', 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,*/*;q=0.8');
+        $request->setHeader('Referer', 'http://www.easports.com/iframe/fut/?baseShowoffUrl=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team%2Fshow-off&guest_app_uri=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team&locale=en_GB');
+        $request->setHeader('Accept-Language', 'en-US,en;q=0.8');
+
+        if ($this->route !== null) {
+            $request->addHeader('X-UT-Route', $this->route);
+        }
+
+        if ($this->methodOverride !== null) {
+            $request->addHeader('X-HTTP-Method-Override', strtoupper($this->methodOverride));
+        }
+    }
+
+    /**
+     * adds headers for mobile
+     *
+     * @param \Guzzle\Http\Message\Request $request
+     */
+    private function addEndpointHeadersMobile($request)
+    {
+        if ($this->pid !== null) {
+            $request->addHeader('X-POW-SID', $this->pid);
+        }
+
+        $request->addHeader('Content-Type', 'application/json');
+        $request->addHeader('x-wap-profile', 'http://wap.samsungmobile.com/uaprof/GT-I9195.xml');
+        $request->addHeader('Accept', 'application/json, text/plain, */*; q=0.01');
+    }
 
     /**
      * adds the body as a json string to the request body
@@ -425,36 +456,6 @@ class Forge
 
 		return $request;
 	}
-
-    /**
-     * adds header for webapp
-     *
-     * @param \Guzzle\Http\Message\Request $request
-     */
-    private function addEndpointHeadersWebApp($request)
-    {
-        $request->addHeader('X-UT-Embed-Error', 'true');
-        $request->addHeader('X-Requested-With', 'XMLHttpRequest');
-        $request->addHeader('Content-Type', 'application/json');
-        $request->addHeader('Accept', 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,*/*;q=0.8');
-        $request->setHeader('Referer', 'http://www.easports.com/iframe/fut/?baseShowoffUrl=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team%2Fshow-off&guest_app_uri=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team&locale=en_GB');
-        $request->setHeader('Accept-Language', 'en-US,en;q=0.8');
-        if ($this->methodOverride !== null) {
-            $request->addHeader('X-HTTP-Method-Override', strtoupper($this->methodOverride));
-        }
-    }
-
-    /**
-     * adds headers for mobile
-     *
-     * @param \Guzzle\Http\Message\Request $request
-     */
-    private function addEndpointHeadersMobile($request)
-    {
-        $request->addHeader('Content-Type', 'application/json');
-        $request->addHeader('x-wap-profile', 'http://wap.samsungmobile.com/uaprof/GT-I9195.xml');
-        $request->addHeader('Accept', 'application/json, text/plain, */*; q=0.01');
-    }
 
     /**
      * sets the user agent
