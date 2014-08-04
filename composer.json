@@ -7,12 +7,13 @@
             "email": "eduard.bess@gmail.com"
         }
     ],
+    "license": "MIT",
     "autoload": {
         "psr-0" : {
             "Fut" : "src"
         }
     },
     "require": {
-        "guzzle/guzzle": "3.7.4"
+        "guzzlehttp/guzzle": "4.1.*"
     }
 }

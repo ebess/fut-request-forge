@@ -10,30 +10,36 @@ Also you can use composer to install the connectors
 
 Example: (also see example.php)
 ```php
-        require_once __DIR__ . "/vendor/autoload.php";
-        require_once __DIR__ . "/autoload.php";
+    require_once __DIR__ . "/vendor/autoload.php";
 
-        use Guzzle\Http\Client;
-        use Guzzle\Plugin\Cookie\CookiePlugin;
-        use Guzzle\Plugin\Cookie\CookieJar\ArrayCookieJar;
+    use GuzzleHttp\Client;
+    use GuzzleHttp\Cookie\CookieJar;
+    use GuzzleHttp\Subscriber\Cookie as CookieSubscriber;
+    use Fut\Request\Forge;
 
-        $client = new Client(null);
-        $cookieJar = new ArrayCookieJar();
-        $cookiePlugin = new CookiePlugin($cookieJar);
-        $client->addSubscriber($cookiePlugin);
+    $client = new Client();
+    $cookieJar = new CookieJar();
+    $cookieSubscriber = new CookieSubscriber($cookieJar);
+    $client->getEmitter()->attach($cookieSubscriber);
 
-        Fut\Request\Forge::setPlatform('ps');
-        Fut\Request\Forge::setEndpoint('WebApp');
+    $export = array(
+        'nucleusId' => 'my-nucleusId',
+        'sessionId' => 'my-sessionId',
+        'phishingToken' => 'my-phishingToken'
+    );
 
-        // example for playstation accounts to get the credits
-        // 3. parameter of the forge factory is the actual real http method
-        // 4. parameter is the overridden method for the webapp headers
-        $forge = Fut\Request\Forge::getForge($client, '/ut/game/fifa14/user/credits', 'post', 'get');
-        $json = $forge
-            ->setNucId($nuc)
-            ->setSid($sid)
-            ->setPhishing($phishing)
-            ->getJson();
+    Forge::setPlatform(Forge::PLATFORM_PLAYSTATION);
+    Forge::setEndpoint(Forge::ENDPOINT_MOBILE);
 
-        echo "you have " . $json['credits'] . " coins" . PHP_EOL;
+    // example for playstation accounts to get the credits
+    // 3. parameter of the forge factory is the actual real http method
+    // 4. parameter is the overridden method for the webapp headers
+    $forge = Forge::getForge($client, '/ut/game/fifa14/user/credits', 'post', 'get');
+    $json = $forge
+        ->setNucId($export['nucleusId'])
+        ->setSid($export['sessionId'])
+        ->setPhishing($export['phishingToken'])
+        ->getJson();
+
+    echo "you have " . $json['credits'] . " coins" . PHP_EOL;
 ```

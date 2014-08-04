@@ -2,13 +2,17 @@
 
 namespace Fut\Request;
 
+use \GuzzleHttp\Client;
+use \GuzzleHttp\Message\MessageInterface;
+use \GuzzleHttp\Message\RequestInterface;
+
 /**
  * Class Request_Forge
  */
 class Forge
 {
     /**
-     * @var \Guzzle\Http\Client
+     * @var Client
      */
     private $client;
 
@@ -88,9 +92,21 @@ class Forge
     private static $platform = 'ps';
 
     /**
+     * endpoint constants
+     */
+    const ENDPOINT_WEBAPP = 'WebApp';
+    const ENDPOINT_MOBILE = 'Mobile';
+
+    /**
+     * platform constants
+     */
+    const PLATFORM_PLAYSTATION = 'ps';
+    const PLATFORM_XBOX = 'xbox';
+
+    /**
      * creates a request forge for given url and method
      *
-     * @param \Guzzle\Http\Client $client
+     * @param Client $client
      * @param string $url
      * @param string $method
      * @param null|string $methodOverride
@@ -101,11 +117,9 @@ class Forge
 		$this->method = $method;
         $this->methodOverride = $methodOverride;
 
-        $this->setUserAgent();
-
         // set url, is no server added -> prepend
         if ( ! preg_match("/^http/mi", $url)) {
-            if (static::$platform === 'xbox') {
+            if (static::$platform === static::PLATFORM_XBOX) {
                 $url = 'https://utas.fut.ea.com' . $url;
             } else {
                 $url = 'https://utas.s2.fut.ea.com' . $url;
@@ -118,25 +132,35 @@ class Forge
     /**
      * sets whether forge should handle like a mobile or webapp
      *
+     * @throws InvalidArgumentException If an unknown endpoint is given
      * @param string $endpoint
      */
     static public function setEndpoint($endpoint)
     {
-        static::$endpoint = $endpoint;
+    	if (in_array($endpoint, [static::ENDPOINT_WEBAPP, static::ENDPOINT_MOBILE])) {
+        	static::$endpoint = $endpoint;
+    	} else {
+    		throw new InvalidArgumentException('Trying to set unknown endpoint.');
+    	}
     }
 
     /**
      * sets the platform of the accounts ps3|xbox360|pc
      *
+     * @throws InvalidArgumentException If an unknown platform is given
      * @param string $platform
      */
     static public function setPlatform($platform)
     {
-        static::$platform = $platform;
+    	if (in_array($platform, [static::PLATFORM_PLAYSTATION, static::PLATFORM_XBOX])) {
+        	static::$platform = $platform;
+    	} else {
+    		throw new InvalidArgumentException('Trying to set unknown platform.');
+    	}
     }
 
     /**
-     * @param \Guzzle\Http\Client $client $client
+     * @param Client $client $client
      * @param string $url
      * @param string $method
      * @param null|string $methodOverride
@@ -295,19 +319,30 @@ class Forge
 	}
 
     /**
+     * returns the request
+     *
+     * @return RequestInterface
+     */
+    public function getRequest()
+    {
+        $request = $this->forgeRequestWithCommonHeaders();
+
+        $this
+            ->applyBody($request)
+            ->applyHeaders($request);
+
+        return $request;
+    }
+
+    /**
      * sends the requests and returns the request itself and the response object
      *
-     * @return \Guzzle\Http\Message\AbstractMessage[]
+     * @return MessageInterface[]
      */
     public function sendRequest()
 	{
-		$request = $this->forgeRequestWithCommonHeaders();
-
-		$this
-            ->applyBody($request)
-			->applyHeaders($request);
-
-		$response = $request->send();
+        $request = $this->getRequest();
+		$response = $this->client->send($request);
 
 		return array(
 			'request' => $request,
@@ -319,7 +354,7 @@ class Forge
      * applies set headers to the request object
      * adds headers, remove headers and adds - if set - the ea specific requests
      *
-     * @param \Guzzle\Http\Message\Request $request
+     * @param RequestInterface $request
      * @return $this
      */
     private function applyHeaders($request)
@@ -327,9 +362,9 @@ class Forge
         // set endpoint specific headers
         if ($this->applyEndpointHeaders === true) {
 
-            if (strtolower(static::$endpoint) == 'webapp') {
+            if (static::$endpoint == static::ENDPOINT_WEBAPP) {
                 $this->addEndpointHeadersWebApp($request);
-            } elseif (strtolower(static::$endpoint) == 'mobile') {
+            } elseif (static::$endpoint == static::ENDPOINT_MOBILE) {
                 $this->addEndpointHeadersMobile($request);
             }
 
@@ -365,46 +400,48 @@ class Forge
     /**
      * adds header for webapp
      *
-     * @param \Guzzle\Http\Message\Request $request
+     * @param RequestInterface $request
      */
     private function addEndpointHeadersWebApp($request)
     {
-        $request->addHeader('X-UT-Embed-Error', 'true');
-        $request->addHeader('X-Requested-With', 'XMLHttpRequest');
-        $request->addHeader('Content-Type', 'application/json');
-        $request->addHeader('Accept', 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,*/*;q=0.8');
+        $request->setHeader('X-UT-Embed-Error', 'true');
+        $request->setHeader('X-Requested-With', 'XMLHttpRequest');
+        $request->setHeader('Content-Type', 'application/json');
+        $request->setHeader('Accept', 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,*/*;q=0.8');
         $request->setHeader('Referer', 'http://www.easports.com/iframe/fut/?baseShowoffUrl=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team%2Fshow-off&guest_app_uri=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team&locale=en_GB');
         $request->setHeader('Accept-Language', 'en-US,en;q=0.8');
+        $request->setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.62 Safari/537.36');
 
         if ($this->route !== null) {
-            $request->addHeader('X-UT-Route', $this->route);
+            $request->setHeader('X-UT-Route', $this->route);
         }
 
         if ($this->methodOverride !== null) {
-            $request->addHeader('X-HTTP-Method-Override', strtoupper($this->methodOverride));
+            $request->setHeader('X-HTTP-Method-Override', strtoupper($this->methodOverride));
         }
     }
 
     /**
      * adds headers for mobile
      *
-     * @param \Guzzle\Http\Message\Request $request
+     * @param RequestInterface $request
      */
     private function addEndpointHeadersMobile($request)
     {
-        if ($this->pid !== null) {
-            $request->addHeader('X-POW-SID', $this->pid);
-        }
+        $request->setHeader('Content-Type', 'application/json');
+        $request->setHeader('x-wap-profile', 'http://wap.samsungmobile.com/uaprof/GT-I9195.xml');
+        $request->setHeader('Accept', 'application/json, text/plain, */*; q=0.01');
+        $request->setHeader('User-Agent', 'Mozilla/5.0 (Linux; U; Android 4.2.2; de-de; GT-I9195 Build/JDQ39) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30');
 
-        $request->addHeader('Content-Type', 'application/json');
-        $request->addHeader('x-wap-profile', 'http://wap.samsungmobile.com/uaprof/GT-I9195.xml');
-        $request->addHeader('Accept', 'application/json, text/plain, */*; q=0.01');
+        if ($this->pid !== null) {
+            $request->setHeader('X-POW-SID', $this->pid);
+        }
     }
 
     /**
      * adds the body as a json string to the request body
      *
-     * @param \Guzzle\Http\Message\Request $request
+     * @param RequestInterface $request
      * @return $this
      */
     private function applyBody($request)
@@ -425,8 +462,8 @@ class Forge
 
             // otherwise as form data
             } else {
-                foreach ($this->body as $name => $value) {
-                    $request->setPostField($name, $value);
+            	foreach ($this->body as $name => $value) {
+                    $request->getBody()->setField($name, $value);
                 }
             }
         }
@@ -437,42 +474,18 @@ class Forge
     /**
      * creates a request with common headers which needed for the connector request
      *
-     * @return \Guzzle\Http\Message\Request
+     * @return RequestInterface
      */
     private function forgeRequestWithCommonHeaders()
 	{
         $request = null;
-        $endpoint = strtolower(static::$endpoint);
-
-        // web app, just take the method as regular
-        if ($endpoint === 'webapp') {
-            $request = $this->client->{$this->method}($this->url);
+        $method = $this->method;
 
         // if mobile and method is overridden, take that one otherwise normal given method
-        } elseif ($endpoint === 'mobile') {
-            $method = $this->methodOverride !== null ? $this->methodOverride : $this->method;
-            $request = $this->client->{$method}($this->url);
+        if (static::$endpoint === static::ENDPOINT_MOBILE && $this->methodOverride !== null) {
+            $method = $this->methodOverride;
         }
 
-		return $request;
+		return $this->client->createRequest($method);
 	}
-
-    /**
-     * sets the user agent
-     *
-     * @return $this
-     */
-    private function setUserAgent()
-    {
-        switch (strtolower(static::$endpoint)) {
-            case 'webapp':
-                $this->client->setUserAgent('Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.62 Safari/537.36');
-                break;
-            case 'mobile':
-                $this->client->setUserAgent('User-Agent', 'Mozilla/5.0 (Linux; U; Android 4.2.2; de-de; GT-I9195 Build/JDQ39) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30');
-                break;
-        }
-    }
-
-
 }
