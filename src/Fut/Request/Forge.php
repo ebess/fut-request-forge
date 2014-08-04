@@ -180,7 +180,7 @@ class Forge
 
         // set url, is no server added -> prepend
         if ( ! preg_match("/^http/mi", $url)) {
-            $url = static::$baseUrl[static::$platform];
+            $url = static::$baseUrl[static::$platform] . $url;
         }
 
         $this->url = $url;
