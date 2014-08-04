@@ -450,8 +450,8 @@ class Forge
     {
         foreach ($headers as $header) {
             // optional headers
-            if ($header[1][1] === '@') {
-                $instanceAttribute = $this->{$header[1]};
+            if ($header[1][0] === '@') {
+                $instanceAttribute = $this->{substr($header[1], 1)};
                 // set if it is not empty or null
                 if ($instanceAttribute !== null && empty($instanceAttribute) === false) {
                     $request->setHeader($header[0], $instanceAttribute);
