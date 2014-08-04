@@ -5,12 +5,95 @@ namespace Fut\Request;
 use \GuzzleHttp\Client;
 use \GuzzleHttp\Message\MessageInterface;
 use \GuzzleHttp\Message\RequestInterface;
+use \GuzzleHttp\Stream;
 
 /**
  * Class Request_Forge
  */
 class Forge
 {
+    /**
+     * endpoint constants
+     */
+    const ENDPOINT_WEBAPP = 'WebApp';
+    const ENDPOINT_MOBILE = 'Mobile';
+
+    /**
+     * platform constants
+     */
+    const PLATFORM_PLAYSTATION = 'ps';
+    const PLATFORM_XBOX = 'xbox';
+
+    /**
+     * defaults endpoint
+     *
+     * @var string
+     */
+    private static $endpoint = 'WebApp';
+
+    /**
+     * defaults platform
+     *
+     * @var string
+     */
+    private static $platform = 'ps';
+
+    /**
+     * base url for requests
+     *
+     * @var string[]
+     */
+    private static $baseUrl = array(
+        'ps'    => 'https://utas.s2.fut.ea.com',
+        'xbox'  => 'https://utas.fut.ea.com'
+    );
+
+    /**
+     * platform related headers, if second parameter of the header starts with an '@' the instance attribute with this
+     * name will be set as value if it is not empty
+     *
+     * @var array[]
+     */
+    private static $platformHeaders = array(
+        'WebApp' => array(
+            // defaults
+            array('X-UT-Embed-Error', 'true'),
+            array('X-Requested-With', 'XMLHttpRequest'),
+            array('Content-Type', 'application/json'),
+            array('Accept', 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,*/*;q=0.8'),
+            array('Referer', 'http://www.easports.com/iframe/fut/?baseShowoffUrl=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team%2Fshow-off&guest_app_uri=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team&locale=en_GB'),
+            array('Accept-Language', 'en-US,en;q=0.8'),
+            array('User-Agent', 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.62 Safari/537.36'),
+
+            // optional
+            array('X-UT-Route', '@route'),
+            array('X-HTTP-Method-Override', '@methodOverride'),
+        ),
+        'Mobile' => array(
+            // defaults
+            array('Content-Type', 'application/json'),
+            array('x-wap-profile', 'http://wap.samsungmobile.com/uaprof/GT-I9195.xml'),
+            array('Accept', 'application/json, text/plain, */*; q=0.01'),
+            array('User-Agent', 'Mozilla/5.0 (Linux; U; Android 4.2.2; de-de; GT-I9195 Build/JDQ39) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30'),
+
+            // optional
+            array('X-POW-SID', '@pid'),
+        )
+    );
+
+    /**
+     * fut related headers, if second parameter of the header starts with an '@' the instance attribute with this
+     * name will be set as value if it is not empty
+     *
+     * @var array[]
+     */
+    private static $futHeaders = array(
+        // optional
+        array('X-UT-SID', '@sid'),
+        array('X-UT-PHISHING-TOKEN', '@phishing'),
+        array('Easw-Session-Data-Nucleus-Id', '@nucId'),
+    );
+
     /**
      * @var Client
      */
@@ -82,28 +165,6 @@ class Forge
     private $route = null;
 
     /**
-     * @var string
-     */
-    private static $endpoint = 'WebApp';
-
-    /**
-     * @var string
-     */
-    private static $platform = 'ps';
-
-    /**
-     * endpoint constants
-     */
-    const ENDPOINT_WEBAPP = 'WebApp';
-    const ENDPOINT_MOBILE = 'Mobile';
-
-    /**
-     * platform constants
-     */
-    const PLATFORM_PLAYSTATION = 'ps';
-    const PLATFORM_XBOX = 'xbox';
-
-    /**
      * creates a request forge for given url and method
      *
      * @param Client $client
@@ -114,16 +175,12 @@ class Forge
     public function __construct($client, $url, $method, $methodOverride = null)
 	{
 		$this->client = $client;
-		$this->method = $method;
-        $this->methodOverride = $methodOverride;
+		$this->method = strtoupper($method);
+        $this->methodOverride = strtoupper($methodOverride);
 
         // set url, is no server added -> prepend
         if ( ! preg_match("/^http/mi", $url)) {
-            if (static::$platform === static::PLATFORM_XBOX) {
-                $url = 'https://utas.fut.ea.com' . $url;
-            } else {
-                $url = 'https://utas.s2.fut.ea.com' . $url;
-            }
+            $url = static::$baseUrl[static::$platform];
         }
 
         $this->url = $url;
@@ -361,13 +418,8 @@ class Forge
 	{
         // set endpoint specific headers
         if ($this->applyEndpointHeaders === true) {
-
-            if (static::$endpoint == static::ENDPOINT_WEBAPP) {
-                $this->addEndpointHeadersWebApp($request);
-            } elseif (static::$endpoint == static::ENDPOINT_MOBILE) {
-                $this->addEndpointHeadersMobile($request);
-            }
-
+            $endpointRelatedHeaders = static::$platformHeaders[static::$endpoint];
+            $this->addConfigHeaders($request, $endpointRelatedHeaders);
         }
 
 		// add headers
@@ -376,18 +428,9 @@ class Forge
 			$request->addHeader($name, $val);
 		}
 
-		// fut specific headers
-		if ($this->sid !== null) {
-			$request->addHeader('X-UT-SID', $this->sid);
-		}
-
-		if ($this->phishing !== null) {
-			$request->addHeader('X-UT-PHISHING-TOKEN', $this->phishing);
-		}
-
-		if ($this->nucId !== null) {
-			$request->addHeader('Easw-Session-Data-Nucleus-Id', $this->nucId);
-		}
+        // fut specific headers
+        $futRelatedHeaders = static::$futHeaders;
+        $this->addConfigHeaders($request, $futRelatedHeaders);
 
 		// remove headers
 		foreach ($this->removedHeaders as $name) {
@@ -398,43 +441,25 @@ class Forge
 	}
 
     /**
-     * adds header for webapp
+     * apply endpoint related headers
      *
      * @param RequestInterface $request
+     * @param array[] $headers
      */
-    private function addEndpointHeadersWebApp($request)
+    private function addConfigHeaders($request, $headers)
     {
-        $request->setHeader('X-UT-Embed-Error', 'true');
-        $request->setHeader('X-Requested-With', 'XMLHttpRequest');
-        $request->setHeader('Content-Type', 'application/json');
-        $request->setHeader('Accept', 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,*/*;q=0.8');
-        $request->setHeader('Referer', 'http://www.easports.com/iframe/fut/?baseShowoffUrl=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team%2Fshow-off&guest_app_uri=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team&locale=en_GB');
-        $request->setHeader('Accept-Language', 'en-US,en;q=0.8');
-        $request->setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.62 Safari/537.36');
-
-        if ($this->route !== null) {
-            $request->setHeader('X-UT-Route', $this->route);
-        }
-
-        if ($this->methodOverride !== null) {
-            $request->setHeader('X-HTTP-Method-Override', strtoupper($this->methodOverride));
-        }
-    }
-
-    /**
-     * adds headers for mobile
-     *
-     * @param RequestInterface $request
-     */
-    private function addEndpointHeadersMobile($request)
-    {
-        $request->setHeader('Content-Type', 'application/json');
-        $request->setHeader('x-wap-profile', 'http://wap.samsungmobile.com/uaprof/GT-I9195.xml');
-        $request->setHeader('Accept', 'application/json, text/plain, */*; q=0.01');
-        $request->setHeader('User-Agent', 'Mozilla/5.0 (Linux; U; Android 4.2.2; de-de; GT-I9195 Build/JDQ39) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30');
-
-        if ($this->pid !== null) {
-            $request->setHeader('X-POW-SID', $this->pid);
+        foreach ($headers as $header) {
+            // optional headers
+            if ($header[1][1] === '@') {
+                $instanceAttribute = $this->{$header[1]};
+                // set if it is not empty or null
+                if ($instanceAttribute !== null && empty($instanceAttribute) === false) {
+                    $request->setHeader($header[0], $instanceAttribute);
+                }
+            // defaults
+            } else {
+                $request->setHeader($header[0], $header[1]);
+            }
         }
     }
 
@@ -445,31 +470,34 @@ class Forge
      * @return $this
      */
     private function applyBody($request)
-	{
+    {
         // set data as json
-		if ($this->bodyAsString) {
-			$request->setBody(json_encode($this->body));
+        if ($this->bodyAsString) {
 
-        // set as forms or query data
-		} elseif ($this->body !== null || $this->methodOverride === 'get') {
+            $request->setBody(Stream\create(json_encode($this->body)));
+
+            // set as forms or query data
+        } elseif ($this->body !== null || $this->methodOverride === 'GET') {
 
             // if get put parameters in query
-            if ($this->method == 'get') {
+            if ($this->method == 'GET') {
                 $query = $request->getQuery();
                 foreach ($this->body as $name => $value) {
                     $query->set($name, $value);
                 }
 
-            // otherwise as form data
+                // otherwise as form data
             } else {
-            	foreach ($this->body as $name => $value) {
-                    $request->getBody()->setField($name, $value);
+                if (is_array($this->body)) {
+                    foreach ($this->body as $name => $value) {
+                        $request->getBody()->setField($name, $value);
+                    }
                 }
             }
         }
 
-		return $this;
-	}
+        return $this;
+    }
 
     /**
      * creates a request with common headers which needed for the connector request
@@ -486,6 +514,6 @@ class Forge
             $method = $this->methodOverride;
         }
 
-		return $this->client->createRequest($method);
+		return $this->client->createRequest($method, $this->url);
 	}
 }
