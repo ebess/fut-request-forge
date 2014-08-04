@@ -451,7 +451,7 @@ class Forge
 			$request->setBody(json_encode($this->body));
 
         // set as forms or query data
-		} elseif ($this->body !== null) {
+		} elseif ($this->body !== null || $this->methodOverride === 'get') {
 
             // if get put parameters in query
             if ($this->method == 'get') {
