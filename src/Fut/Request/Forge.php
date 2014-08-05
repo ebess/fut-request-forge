@@ -63,7 +63,6 @@ class Forge
             array('Accept', 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,*/*;q=0.8'),
             array('Referer', 'http://www.easports.com/iframe/fut/?baseShowoffUrl=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team%2Fshow-off&guest_app_uri=http%3A%2F%2Fwww.easports.com%2Fuk%2Ffifa%2Ffootball-club%2Fultimate-team&locale=en_GB'),
             array('Accept-Language', 'en-US,en;q=0.8'),
-            array('User-Agent', 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.62 Safari/537.36'),
 
             // optional
             array('X-UT-Route', '@route'),
@@ -74,7 +73,6 @@ class Forge
             array('Content-Type', 'application/json'),
             array('x-wap-profile', 'http://wap.samsungmobile.com/uaprof/GT-I9195.xml'),
             array('Accept', 'application/json, text/plain, */*; q=0.01'),
-            array('User-Agent', 'Mozilla/5.0 (Linux; U; Android 4.2.2; de-de; GT-I9195 Build/JDQ39) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30'),
 
             // optional
             array('X-POW-SID', '@pid'),
@@ -92,6 +90,20 @@ class Forge
         array('X-UT-SID', '@sid'),
         array('X-UT-PHISHING-TOKEN', '@phishing'),
         array('Easw-Session-Data-Nucleus-Id', '@nucId'),
+    );
+
+    /**
+     * headers which has to be attached on every request
+     *
+     * @var array[]
+     */
+    private static $obligatedEndpointHeaders = array(
+        'WebApp' => array(
+            array('User-Agent', 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/29.0.1547.62 Safari/537.36'),
+        ),
+        'Mobile' => array(
+            array('User-Agent', 'Mozilla/5.0 (Linux; U; Android 4.2.2; de-de; GT-I9195 Build/JDQ39) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30'),
+        )
     );
 
     /**
@@ -176,7 +188,9 @@ class Forge
 	{
 		$this->client = $client;
 		$this->method = strtoupper($method);
-        $this->methodOverride = strtoupper($methodOverride);
+        if ($methodOverride !== null) {
+            $this->methodOverride = strtoupper($methodOverride);
+        }
 
         // set url, is no server added -> prepend
         if ( ! preg_match("/^http/mi", $url)) {
@@ -416,6 +430,9 @@ class Forge
      */
     private function applyHeaders($request)
 	{
+        // set obligated headers
+        $this->addConfigHeaders($request, static::$obligatedEndpointHeaders[static::$endpoint]);
+
         // set endpoint specific headers
         if ($this->applyEndpointHeaders === true) {
             $endpointRelatedHeaders = static::$platformHeaders[static::$endpoint];
