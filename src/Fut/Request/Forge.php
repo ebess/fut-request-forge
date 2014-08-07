@@ -470,7 +470,7 @@ class Forge
             if ($header[1][0] === '@') {
                 $instanceAttribute = $this->{substr($header[1], 1)};
                 // set if it is not empty or null
-                if ($instanceAttribute !== null && empty($instanceAttribute) === false) {
+                if ($instanceAttribute !== null && (empty($instanceAttribute) === false || is_string($instanceAttribute))) {
                     $request->setHeader($header[0], $instanceAttribute);
                 }
             // defaults
