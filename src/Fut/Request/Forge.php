@@ -203,7 +203,7 @@ class Forge
     /**
      * sets whether forge should handle like a mobile or webapp
      *
-     * @throws InvalidArgumentException If an unknown endpoint is given
+     * @throws \InvalidArgumentException If an unknown endpoint is given
      * @param string $endpoint
      */
     static public function setEndpoint($endpoint)
@@ -211,14 +211,14 @@ class Forge
     	if (in_array($endpoint, [static::ENDPOINT_WEBAPP, static::ENDPOINT_MOBILE])) {
         	static::$endpoint = $endpoint;
     	} else {
-    		throw new InvalidArgumentException('Trying to set unknown endpoint.');
+    		throw new \InvalidArgumentException('Trying to set unknown endpoint.');
     	}
     }
 
     /**
      * sets the platform of the accounts ps3|xbox360|pc
      *
-     * @throws InvalidArgumentException If an unknown platform is given
+     * @throws \InvalidArgumentException If an unknown platform is given
      * @param string $platform
      */
     static public function setPlatform($platform)
@@ -226,7 +226,7 @@ class Forge
     	if (in_array($platform, [static::PLATFORM_PLAYSTATION, static::PLATFORM_XBOX])) {
         	static::$platform = $platform;
     	} else {
-    		throw new InvalidArgumentException('Trying to set unknown platform.');
+    		throw new \InvalidArgumentException('Trying to set unknown platform.');
     	}
     }
 
@@ -429,7 +429,7 @@ class Forge
      * @param RequestInterface $request
      * @return $this
      */
-    private function applyHeaders($request)
+    private function applyHeaders(RequestInterface $request)
 	{
         // set obligated headers
         $this->addConfigHeaders($request, static::$obligatedEndpointHeaders[static::$endpoint]);
@@ -464,7 +464,7 @@ class Forge
      * @param RequestInterface $request
      * @param array[] $headers
      */
-    private function addConfigHeaders($request, $headers)
+    private function addConfigHeaders(RequestInterface $request, $headers)
     {
         foreach ($headers as $header) {
             // optional headers
@@ -487,7 +487,7 @@ class Forge
      * @param RequestInterface $request
      * @return $this
      */
-    private function applyBody($request)
+    private function applyBody(RequestInterface $request)
     {
         // set data as json
         if ($this->bodyAsString) {
@@ -524,7 +524,6 @@ class Forge
      */
     private function forgeRequestWithCommonHeaders()
 	{
-        $request = null;
         $method = $this->method;
 
         // if mobile and method is overridden, take that one otherwise normal given method
