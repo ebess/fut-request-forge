@@ -309,11 +309,12 @@ class Forge
     /**
      * set route
      *
-     * @param string $route
      * @return $this
      */
-    public function setRoute($route)
+    public function setRoute()
 	{
+		$route = static::$baseUrl[static::$platform];
+
         // remove port part
         $route = preg_replace("/(:[0-9]*)$/mi", '', $route);
 		$this->route = $route;
